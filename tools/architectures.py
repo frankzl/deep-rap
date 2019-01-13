@@ -34,8 +34,23 @@ def sample(predicted, temperature=0.5):
     predicted = exp_predicted / np.sum(exp_predicted)
     probabilities = np.random.multinomial(1, predicted, 1)
     return probabilities
+
+class Embedding:
+    def __init__(self, name):
+        self.name = name
+
+    def build(self, vocab_size, embedding_dimension):
+
+        self._inputs = tf.placeholder(tf.int32, shape=[-1, times_steps])
+
+        self.embeddings = tf.Variable(
+                tf.random_uniform([vocab_size, embedding_dimension],
+                    -1.0, 1.0)
+                )
+        self.embed = tf.nn.embedding_lookup(self.embeddings, self._inputs)
+
         
-class RNN:
+class SingleLayerRNN:
     def __init__(self, name):
         self.name = name
         self.weights = []
@@ -80,7 +95,7 @@ class RNN:
             self.correct_prediction = tf.equal(tf.argmax(self.Y,1), tf.argmax(self.final_output, 1))
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))*100
     
-    def train(self, train_data, train_labels, alphabet, epochs=20, batch_size=128):
+    def train(self, train_data, train_labels, alphabet, epochs=20, batch_size=128, temperature=0.5):
         train_losses = []
         train_accs = []
         
@@ -121,7 +136,8 @@ class RNN:
                 #to print the seed 40 characters
                 seed_chars = ''
                 for each in seed[0]:
-                    seed_chars += alphabet._keys[np.where(each == max(each))[0][0]]
+                    char = alphabet._keys[np.where(each == max(each))[0][0]]
+                    seed_chars += alphabet.format_element(char)
                 print ("Seed:" + seed_chars)
         
                 #predict next 500 characters
@@ -132,9 +148,9 @@ class RNN:
                         
                     predicted = session.run([self.final_output], feed_dict = {self.X:seed})
                     predicted = np.asarray(predicted[0]).astype('float64')[0]
-                    probabilities = sample(predicted)
+                    probabilities = sample(predicted, temperature)
                     predicted_chars = alphabet._keys[np.argmax(probabilities)]
-                    seed_chars += predicted_chars
+                    seed_chars += alphabet.format_element(predicted_chars)
                 print ('Result:'+ seed_chars)
         
         self.hist = {
