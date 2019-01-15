@@ -40,13 +40,32 @@ class Dictionary:
         return "".join([self.index_to_element(idx) for idx in indices])
 
     def indices_to_text(self, indices):
-        _indices = indices.tolist()
+        _indices = indices.astype(int).tolist()
         return "".join([self.index_to_element(idx) for idx in _indices])
+
+    def making_embedded_one_hot(self, text, sequence_length, step = 1):
+        len_unique_chars = self.get_size()
+
+        prep_text = self.prep_text(text)
+
+        input_chars = []
+        output_char = []
+        for i in range(0, len(prep_text) - sequence_length, step):
+            input_chars.append(prep_text[i:i+sequence_length])
+            output_char.append(prep_text[i+sequence_length])
+
+        train_data = np.zeros((len(input_chars), sequence_length))
+        target_data = np.zeros((len(input_chars), len_unique_chars))
+
+        for i , each in enumerate(input_chars):
+            for j, char in enumerate(each):
+                train_data[i, j] = self._keys.index(char)
+            target_data[i, self._keys.index(output_char[i])] = 1
+
+        return train_data, target_data
 
 
     def making_one_hot(self, text, sequence_length, step = 1):
-        '''
-        '''
         len_unique_chars = self.get_size()
 
         prep_text = self.prep_text(text)
@@ -92,6 +111,12 @@ class Vocabulary(Dictionary):
 
     def get_count(self):
         return self._count
+
+    def indices_to_text(self, indices):
+        _indices = indices.astype(int).tolist()
+        text = " ".join([self.index_to_element(idx) for idx in _indices])
+        print( text.replace(" \n ", "\n"))
+        return text.replace(" \n ", "\n")
 
 
 class Alphabet(Dictionary):
