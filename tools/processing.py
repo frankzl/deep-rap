@@ -1,10 +1,12 @@
 import numpy as np
 
-
-
 def get_text(file_name):
     text = open(file_name, 'r').read()
     return text
+
+def write_text(file_name, text):
+    f = open(file_name, 'w+')
+    f.write( text )
 
 class Dictionary:
 
@@ -61,6 +63,27 @@ class Dictionary:
             for j, char in enumerate(each):
                 train_data[i, j] = self._keys.index(char)
             target_data[i, self._keys.index(output_char[i])] = 1
+
+        return train_data, target_data
+    
+    def making_full_one_hot(self, text, sequence_length, step = 1):
+        len_unique_chars = self.get_size()
+
+        prep_text = self.prep_text(text)
+
+        input_chars = []
+        output_char = []
+        for i in range(0, len(prep_text) - sequence_length, step):
+            input_chars.append(prep_text[i:i+sequence_length])
+            output_char.append(prep_text[i+sequence_length])
+
+        train_data = np.zeros((len(input_chars), sequence_length))
+        target_data = np.zeros((len(input_chars), 1))
+
+        for i , each in enumerate(input_chars):
+            for j, char in enumerate(each):
+                train_data[i, j] = self._keys.index(char)
+            target_data[i, 0] = self._keys.index(output_char[i])
 
         return train_data, target_data
 

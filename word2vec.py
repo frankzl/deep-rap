@@ -21,7 +21,8 @@ sentences = []
 #     rand_even_ints = np.random.choice(range(2, 10, 2), 3)
 #     sentences.append(" ".join([digit_to_word_map[r] for r in rand_even_ints]))
 
-text = pre.get_text("data/cleaned-rap-lyrics/lyrics_combined.txt")
+# text = pre.get_text("data/cleaned-rap-lyrics/lyrics_combined.txt")
+text = pre.get_text("data/prepped/clean2_pac.txt")
 sentences = text.split("\n")
 
 # Map words to indices
@@ -123,7 +124,7 @@ with tf.Session() as sess:
 
     tf.global_variables_initializer().run()
 
-    for epoch in range(10):
+    for epoch in range(5):
         
         epoch_steps = (int(len(skip_gram_pairs)/batch_size))
         for step in range(epoch_steps):
@@ -146,7 +147,7 @@ with tf.Session() as sess:
     normalized_embeddings = embeddings / norm
     normalized_embeddings_matrix = sess.run(normalized_embeddings)
 
-ref_word = normalized_embeddings_matrix[word2index_map["where"]]
+ref_word = normalized_embeddings_matrix[word2index_map["high"]]
 
 cosine_dists = np.dot(normalized_embeddings_matrix, ref_word)
 ff = np.argsort(cosine_dists)[::-1][0:50]

@@ -48,6 +48,7 @@ def train(trainable, train_data, train_labels, alphabet, epochs=20, batch_size=1
                 print(f"Accuracy:\t {tr_acc}")
             
             for batch_ixs in batch_data(len(train_data), batch_size):
+                print(len(batch_ixs))
                 _ = session.run(trainable.train_step,
                                feed_dict={
                                    trainable.X: train_data[batch_ixs],
@@ -132,7 +133,7 @@ class Embedding:
         self.name = name
         self.embed = None
 
-    def output(self):
+    def output(self, _inputs):
         pass
 
 class LeanableEmbedding(Embedding):
@@ -143,13 +144,13 @@ class LeanableEmbedding(Embedding):
         self.vocab_size = vocab_size
         self.embedding_dimension = embedding_dimension
 
-    def get_output(self, _inputs):
+    def output(self, _inputs):
         embeddings = tf.Variable(
                 tf.random_uniform([self.vocab_size, self.embedding_dimension],
                     -1.0, 1.0)
                 )
         embed = tf.nn.embedding_lookup(embeddings, _inputs)
-        return embed
+        return embed, embeddings
 
 class Trainable:
     def __init__(self, name):
@@ -168,30 +169,31 @@ class Trainable:
 class SingleLayerRNN(Trainable):
     def __init__(self, name):
         super().__init__(name)
-        
+
     def build(self, hidden_layer_size, vocab_size, time_steps, l2_reg=0.0, embedding=None):
         self.time_steps = time_steps
         self.vocab_size = vocab_size
-        
+
         if(embedding is None):
             self.X = tf.placeholder(tf.float32, shape=[None, time_steps, vocab_size], name="data")
+            _X = tf.transpose(self.X, [1, 0, 2])
         else:
             self.X = tf.placeholder(tf.int32, shape=[None, time_steps], name="data")
 
             embeddings = tf.Variable(
-                tf.random_uniform([vocab_size, embedding.embedding_dimension],
-                    -1.0, 1.0)
-                )
+                    tf.random_uniform([vocab_size, embedding.embedding_dimension],
+                        -1.0, 1.0)
+                    )
             print(embeddings.shape)
             print(self.X.shape)
             embed = tf.nn.embedding_lookup(embeddings, self.X)
+            _X = tf.transpose(embed, [1, 0, 2])
 
             # self.X = embed
 
         self.Y = tf.placeholder(tf.int16, shape=[None, vocab_size], name="labels")
-        
+
         # _X = tf.transpose(self.X, [1, 0, 2])
-        _X = tf.transpose(embed, [1, 0, 2])
 
         if(embedding is None):
             _X = tf.reshape(_X, [-1, vocab_size])
@@ -199,10 +201,10 @@ class SingleLayerRNN(Trainable):
             _X = tf.reshape(_X, [-1, embedding.embedding_dimension])
 
         _X = tf.split(_X, time_steps, 0)
-        
+
         with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
             self.rnn_cell   = tf.nn.rnn_cell.LSTMCell(hidden_layer_size)
-            
+
             self.outputs, _ = tf.contrib.rnn.static_rnn(self.rnn_cell, _X, dtype=tf.float32)
             self.last_rnn_output = self.outputs[-1]
 
@@ -210,47 +212,56 @@ class SingleLayerRNN(Trainable):
 
             self.weights.append(W_out)
             self.biases.append(b_out)
-            
+
             self.softmax = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.final_output,
-                                                                labels=self.Y)
+                    labels=self.Y)
             self.cross_entropy_loss = tf.reduce_mean(self.softmax)
-            
+
             self.loss = self.cross_entropy_loss
-            
+
             self.optimizer = tf.train.AdamOptimizer()
             self.train_step= self.optimizer.minimize(self.loss)
-            
+
             self.correct_prediction = tf.equal(tf.argmax(self.Y,1), tf.argmax(self.final_output, 1))
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))*100
-    
+
+
+def lstm_layer(num_layers, hidden_layer_size):
+    cells = []
+    for i in range(num_layers):
+        lstm_cell = tf.nn.rnn_cell.LSTMCell(hidden_layer_size)
+        cells.append(lstm_cell)
+
+    return tf.contrib.rnn.MultiRNNCell(cells=cells, state_is_tuple=True)
 
 class MultiLayerRNN(Trainable):
     def __init__(self, name):
         super().__init__(name)
-        
-    def build(self, num_layers, hidden_layer_size, vocab_size, time_steps, l2_reg=0.0, embedding_size=0):
+
+    def build(self, num_layers, hidden_layer_size, vocab_size, time_steps, l2_reg=0.0, embedding=None):
         self.time_steps = time_steps
         self.vocab_size = vocab_size
-        
-        if(embedding_size == 0):
+
+        self.X = tf.placeholder(tf.float32, shape=[None, time_steps, vocab_size], name="data")
+        self.Y = tf.placeholder(tf.int16, shape=[None, vocab_size], name="labels")
+
+        if(embedding is None):
             self.X = tf.placeholder(tf.float32, shape=[None, time_steps, vocab_size], name="data")
         else:
-            self.X = tf.placeholder(tf.float32, shape=[None, time_steps, embedding_size], name="data")
+            self.X = tf.placeholder(tf.int32, shape=[None, time_steps], name="data")
+            self.embed, _ = embedding.output(self.X)
 
-        self.Y = tf.placeholder(tf.int16, shape=[None, vocab_size], name="labels")
-        
+
         with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
 
-            self.cells = []
+            self.stacked_cells = lstm_layer(num_layers, hidden_layer_size)
 
-            for i in range(num_layers):
-                lstm_cell = tf.nn.rnn_cell.LSTMCell(hidden_layer_size)
-                self.cells.append(lstm_cell)
-
-            self.stacked_cells = tf.contrib.rnn.MultiRNNCell(cells=self.cells, state_is_tuple=True)
-            
-            self.outputs, self.states = tf.nn.dynamic_rnn(
-                    self.stacked_cells, self.X, dtype=tf.float32)
+            if(embedding is None):
+                self.outputs, self.states = tf.nn.dynamic_rnn(
+                        self.stacked_cells, self.X, dtype=tf.float32)
+            else:
+                self.outputs, self.states = tf.nn.dynamic_rnn(
+                        self.stacked_cells, self.embed, dtype=tf.float32)
 
             self.last_rnn_output = self.states[num_layers - 1][1]
 
@@ -259,16 +270,14 @@ class MultiLayerRNN(Trainable):
             self.weights.append(W_out)
             self.biases.append(b_out)
 
-            # self.final_output    = self.last_rnn_output @ W_out + b_out
-            
             self.softmax = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.final_output,
-                                                                labels=self.Y)
+                    labels=self.Y)
             self.cross_entropy_loss = tf.reduce_mean(self.softmax)
-            
+
             self.loss = self.cross_entropy_loss
-            
+
             self.optimizer = tf.train.AdamOptimizer()
             self.train_step= self.optimizer.minimize(self.loss)
-            
+
             self.correct_prediction = tf.equal(tf.argmax(self.Y,1), tf.argmax(self.final_output, 1))
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))*100
