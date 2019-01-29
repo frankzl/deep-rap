@@ -8,9 +8,11 @@ from tensorflow.contrib.tensorboard.plugins import projector
 import tools.processing as pre
 
 batch_size = 256
-embedding_dimension = 128
+# embedding_dimension = 128
+embedding_dimension = 15
 negative_samples = 32
 LOG_DIR = "logs/word2vec_intro"
+EPOCHS = 20
 
 sentences = []
 
@@ -23,14 +25,14 @@ sentences = []
 
 # text = pre.get_text("data/cleaned-rap-lyrics/lyrics_combined.txt")
 text = pre.get_text("data/prepped/clean2_pac.txt")
-sentences = text.split("\n")
+# sentences = text.split("\n")
+sentences = [text.replace( "\n", " ; " )]
 
 # Map words to indices
 word2index_map = {}
 index = 0
 
-
-print(sentences[:10])
+print(sentences[0][:300])
 
 for sent in sentences:
     for word in sent.lower().split():
@@ -53,7 +55,6 @@ for sent in sentences:
                                 word_context_pair[0][0]])
         skip_gram_pairs.append([word_context_pair[1],
                                 word_context_pair[0][1]])
-
 
 def get_skipgram_batch(batch_size):
     instance_indices = list(range(len(skip_gram_pairs)))
@@ -124,7 +125,9 @@ with tf.Session() as sess:
 
     tf.global_variables_initializer().run()
 
-    for epoch in range(5):
+    for epoch in range(EPOCHS):
+
+        print(f"\n\nepoch: {epoch}\n")
         
         epoch_steps = (int(len(skip_gram_pairs)/batch_size))
         for step in range(epoch_steps):
@@ -133,21 +136,23 @@ with tf.Session() as sess:
                                   feed_dict={train_inputs: x_batch,
                                              train_labels: y_batch})
             train_writer.add_summary(summary, step)
-
+            
             if step % 100 == 0:
-                saver.save(sess, os.path.join(LOG_DIR, "w2v_model.ckpt"), step)
                 loss_value = sess.run(loss,
-                                      feed_dict={train_inputs: x_batch,
-                                                 train_labels: y_batch})
+                                          feed_dict={train_inputs: x_batch,
+                                                     train_labels: y_batch})
                 print("Loss at %d/%d: %.5f" % (step, epoch_steps, loss_value))
-    
+
+
+        saver.save(sess, os.path.join(LOG_DIR, "w2v_model.ckpt"), epoch)
+                
     saver.save(sess, os.path.join(LOG_DIR, "final.ckpt"))
     # Normalize embeddings before using
     norm = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keep_dims=True))
     normalized_embeddings = embeddings / norm
     normalized_embeddings_matrix = sess.run(normalized_embeddings)
 
-ref_word = normalized_embeddings_matrix[word2index_map["high"]]
+ref_word = normalized_embeddings_matrix[word2index_map["nigga"]]
 
 cosine_dists = np.dot(normalized_embeddings_matrix, ref_word)
 ff = np.argsort(cosine_dists)[::-1][0:50]

@@ -34,36 +34,31 @@ def train(trainable, train_data, train_labels, alphabet, epochs=20, batch_size=1
     
     with session.as_default():
         session.run(tf.global_variables_initializer())
-        tr_loss, tr_acc = session.run([trainable.loss, trainable.accuracy],
-                                      feed_dict={trainable.X: train_data,
-                                                 trainable.Y: train_labels})
-        train_losses.append(tr_loss)
-        train_accs.append(tr_acc)
-        
+
         for epoch in range(epochs):
-            
+
+            loss_sum = 0
+            acc_sum = 0
+            it = 0
+                        
+            for batch_ixs in batch_data(len(train_data), batch_size):
+                _, tr_loss, tr_acc = session.run([trainable.train_step, trainable.loss, trainable.accuracy],
+                        feed_dict={
+                            trainable.X: train_data[batch_ixs],
+                            trainable.Y: train_labels[batch_ixs],
+                            })
+                loss_sum += tr_loss
+                acc_sum  += tr_acc
+                it += 1
+
+            train_losses.append(loss_sum/it)
+            train_accs.append(acc_sum/it)
+
             if(epoch + 1) % 1 == 0:
                 print(f"\n\nEpoch {epoch + 1}/{epochs}")
                 print(f"Loss:    \t {tr_loss}")
                 print(f"Accuracy:\t {tr_acc}")
-            
-            for batch_ixs in batch_data(len(train_data), batch_size):
-                print(len(batch_ixs))
-                _ = session.run(trainable.train_step,
-                               feed_dict={
-                                   trainable.X: train_data[batch_ixs],
-                                   trainable.Y: train_labels[batch_ixs],
-                               })
-            tr_loss, tr_acc = session.run([trainable.loss, trainable.accuracy],
-                                           feed_dict={trainable.X: train_data,
-                                                      trainable.Y: train_labels
-                                                     })
-            train_losses.append(tr_loss)
-            train_accs.append(tr_acc)
-            
-            #get on of training set as seed
-            # seed = train_data[:1:]
-    
+
             #to print the seed 40 characters
             seed_chars = ''
 
@@ -92,6 +87,77 @@ def train(trainable, train_data, train_labels, alphabet, epochs=20, batch_size=1
                     else:
                         remove_fist_char = seed[:,1:,:]
                         seed = np.append(remove_fist_char, np.reshape(probabilities, [1, 1, alphabet.get_size()]), axis=1)
+                    
+                predicted = session.run([trainable.final_output], feed_dict = {trainable.X:seed})
+                predicted = np.asarray(predicted[0]).astype('float64')[0]
+                probabilities = sample(predicted, temperature)
+                predicted_chars = alphabet._keys[np.argmax(probabilities)]
+                seed_chars += alphabet.format_element(predicted_chars)
+            print ('Result:'+ seed_chars)
+    
+    trainable.hist = {
+        'train_losses': np.array(train_losses),
+        'train_accuracy': np.array(train_accs)
+    }
+
+def train_epoch(trainable, session, train_data, train_labels, batch_size=128):
+    loss_sum = 0
+    acc_sum = 0
+    it = 0
+                
+    for batch_ixs in batch_data(len(train_data), batch_size):
+        _, tr_loss, tr_acc = session.run([trainable.train_step, trainable.loss, trainable.accuracy],
+                feed_dict={
+                    trainable.X: train_data[batch_ixs],
+                    trainable.Y: train_labels[batch_ixs],
+                    })
+        loss_sum += tr_loss
+        acc_sum  += tr_acc
+        it += 1
+
+    return loss_sum/it, acc_sum/it
+
+def trainX(trainable, train_data, train_labels, embedding, alphabet, epochs=20, batch_size=128, temperature=0.5):
+    train_losses = []
+    train_accs = []
+    
+    trainable.session = tf.Session()
+    session = trainable.session
+    
+    with session.as_default():
+        session.run(tf.global_variables_initializer())
+        
+        for epoch in range(epochs):
+
+            tr_loss, tr_acc = train_epoch( trainable, session, train_data, train_labels, batch_size)
+            
+            train_losses.append(tr_loss)
+            train_accs.append(tr_acc)
+
+            if(epoch + 1) % 1 == 0:
+                print(f"\n\nEpoch {epoch + 1}/{epochs}")
+                print(f"Loss:    \t {tr_loss}")
+                print(f"Accuracy:\t {tr_acc}")
+
+            #to print the seed 40 characters
+            seed_chars = ''
+
+            seed = train_data[:1:]
+            initial_seed = seed[0]
+            seed_one_hot = alphabet.indices_to_text(initial_seed)
+            seed_one_hot = alphabet.one_hot(seed_one_hot)
+            
+            # for each in seed[0]:
+            for each in seed_one_hot:
+                char = alphabet._keys[np.where(each == max(each))[0][0]]
+                seed_chars += alphabet.format_element(char)
+            print ("Seed:" + seed_chars)
+    
+            #predict next 500 characters
+            for i in range(500):
+                if i > 0:
+                    remove_fist_char = seed[:,1:]
+                    seed = np.append(remove_fist_char, np.reshape(np.argmax(probabilities), [1, 1]), axis=1)
                     
                 predicted = session.run([trainable.final_output], feed_dict = {trainable.X:seed})
                 predicted = np.asarray(predicted[0]).astype('float64')[0]

@@ -17,7 +17,7 @@ learning_rate = 0.001
 batch_size = 200
 epoch = 50
 temperature = 0.8
-SAVE_PATH = '/home/simon/Firma/AI/HegelMachine/HegelPython/logs/TextGen/Rilke/'
+SAVE_PATH = '/home/frankzl/trash'
 
 
 if not os.path.exists(SAVE_PATH):
@@ -30,7 +30,7 @@ def tokens(text):
     text = re.sub(r'[0-9]+', '', text)
     return re.findall(r'\w+', text.lower())
 
-WORDS = tokens(file('RilkeBig.txt').read())
+WORDS = tokens(open('RilkeBig.txt').read())
 WORD_COUNTS = collections.Counter(WORDS)
 
 def edits0(word):
@@ -183,7 +183,7 @@ def run(train_data, target_data, unique_chars, len_unique_chars):
     num_batches = int(len(train_data)/batch_size)
 
     for i in range(epoch):
-        print "----------- Epoch {0}/{1} -----------".format(i+1, epoch)
+        print ("----------- Epoch {0}/{1} -----------".format(i+1, epoch))
         count = 0
         for _ in range(num_batches):
             train_batch, target_batch = train_data[count:count+batch_size], target_data[count:count+batch_size]
@@ -198,7 +198,7 @@ def run(train_data, target_data, unique_chars, len_unique_chars):
         seed_chars = ''
         for each in seed[0]:
                 seed_chars += unique_chars[np.where(each == max(each))[0][0]]
-        print "Seed:", seed_chars
+        print ("Seed:", seed_chars)
 
         #predict next 500 characters
         for i in range(500):
@@ -211,11 +211,11 @@ def run(train_data, target_data, unique_chars, len_unique_chars):
             probabilities = sample(predicted)
             predicted_chars = unique_chars[np.argmax(probabilities)]
             seed_chars += predicted_chars
-        print 'Result:', seed_chars
-        print 'Corrected:', correct_text_generic(seed_chars)
+        print ('Result:', seed_chars)
+        print ('Corrected:', correct_text_generic(seed_chars))
     ui = True
     while ui == True:
-        seed_chars = raw_input("Enter a seed: ")
+        seed_chars = input("Enter a seed: ")
         for i in range(280):
             if i > 0:
                 remove_fist_char = seed[:, 1:, :]
@@ -226,8 +226,8 @@ def run(train_data, target_data, unique_chars, len_unique_chars):
             predicted_chars = unique_chars[np.argmax(probabilities)]
             seed_chars += predicted_chars
         # print 'Result:', seed_chars
-        print 'Corrected:', correct_text_generic(seed_chars)
-        action = raw_input("Do you want to try another seed? (yes=y, no=n)?: ")
+        print ('Corrected:', correct_text_generic(seed_chars))
+        action = input("Do you want to try another seed? (yes=y, no=n)?: ")
         if action != "y":
             ui = False
     save_path = saver.save(sess, SAVE_PATH, global_step=10)
