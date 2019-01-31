@@ -120,11 +120,14 @@ class Vocabulary(Dictionary):
 
         self._keys  = list(self._count.keys())
         self._keys.append("\n")
+        self._keys.sort()
 
         self._dict  = {}
 
         for idx, key in enumerate(self._keys):
             self._dict[key] = idx
+
+        self.index2word_map = {index: word for word, index in self._dict.items()}
 
     def format_element(self, element):
         return element + " "
@@ -148,9 +151,14 @@ class Alphabet(Dictionary):
         from collections import Counter
         self._count = Counter(list(text))
         self._keys  = list(self._count.keys())
+
+        self._keys.sort()
+
         self._dict  = {}
         for idx, key in enumerate(self._keys):
             self._dict[key] = idx
+        
+        self.index2word_map = {index: word for word, index in self._dict.items()}
 
     def prep_text(self, text):
         return text

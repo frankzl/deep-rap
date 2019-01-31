@@ -2,6 +2,8 @@ logs
 data
 training_checkpoints
 
+*.swp
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

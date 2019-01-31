@@ -9,10 +9,12 @@ import tools.processing as pre
 
 batch_size = 256
 # embedding_dimension = 128
-embedding_dimension = 15
+embedding_dimension = 3
 negative_samples = 32
 LOG_DIR = "logs/word2vec_intro"
-EPOCHS = 20
+EPOCHS = 20 
+
+text = pre.get_text("data/ref_text2.txt")
 
 sentences = []
 
@@ -24,9 +26,10 @@ sentences = []
 #     sentences.append(" ".join([digit_to_word_map[r] for r in rand_even_ints]))
 
 # text = pre.get_text("data/cleaned-rap-lyrics/lyrics_combined.txt")
-text = pre.get_text("data/prepped/clean2_pac.txt")
+# text = pre.get_text("data/prepped/clean2_pac.txt")
+
 # sentences = text.split("\n")
-sentences = [text.replace( "\n", " ; " )]
+sentences = [text.replace( "\n", ";" )]
 
 # Map words to indices
 word2index_map = {}
@@ -34,12 +37,16 @@ index = 0
 
 print(sentences[0][:300])
 
+vocab = pre.Vocabulary(sentences[0])
+
 for sent in sentences:
     for word in sent.lower().split():
         if word not in word2index_map:
             word2index_map[word] = index
             index += 1
-index2word_map = {index: word for word, index in word2index_map.items()}
+# index2word_map = {index: word for word, index in word2index_map.items()}
+index2word_map = vocab.index2word_map
+word2index_map = vocab._dict
 
 vocabulary_size = len(index2word_map)
 
@@ -109,12 +116,12 @@ merged = tf.summary.merge_all()
 with tf.Session() as sess:
     train_writer = tf.summary.FileWriter(LOG_DIR,
                                          graph=tf.get_default_graph())
-    saver = tf.train.Saver()
+    saver = tf.train.Saver(var_list={"embeddings": embeddings})
 
-    with open(os.path.join(LOG_DIR, 'metadata.tsv'), "w") as metadata:
-        metadata.write('Name\tClass\n')
-        for k, v in index2word_map.items():
-            metadata.write('%s\t%d\n' % (v, k))
+    # with open(os.path.join(LOG_DIR, 'metadata.tsv'), "w") as metadata:
+    #     metadata.write('Name\tClass\n')
+    #     for k, v in index2word_map.items():
+    #         metadata.write('%s\t%d\n' % (v, k))
 
     config = projector.ProjectorConfig()
     embedding = config.embeddings.add()
@@ -144,15 +151,15 @@ with tf.Session() as sess:
                 print("Loss at %d/%d: %.5f" % (step, epoch_steps, loss_value))
 
 
-        saver.save(sess, os.path.join(LOG_DIR, "w2v_model.ckpt"), epoch)
+        saver.save(sess, os.path.join(LOG_DIR, "embeddings.ckpt"), epoch)
                 
-    saver.save(sess, os.path.join(LOG_DIR, "final.ckpt"))
+    saver.save(sess, os.path.join(LOG_DIR, "final_embeddings.ckpt"))
     # Normalize embeddings before using
     norm = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keep_dims=True))
     normalized_embeddings = embeddings / norm
     normalized_embeddings_matrix = sess.run(normalized_embeddings)
 
-ref_word = normalized_embeddings_matrix[word2index_map["nigga"]]
+ref_word = normalized_embeddings_matrix[word2index_map["walk"]]
 
 cosine_dists = np.dot(normalized_embeddings_matrix, ref_word)
 ff = np.argsort(cosine_dists)[::-1][0:50]
