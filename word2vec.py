@@ -14,7 +14,8 @@ negative_samples = 32
 LOG_DIR = "logs/word2vec_intro"
 EPOCHS = 20 
 
-text = pre.get_text("data/ref_text2.txt")
+# text = pre.get_text("data/ref_text2.txt")
+text = pre.get_text("data/prepped/combined.txt")
 
 sentences = []
 

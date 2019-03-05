@@ -52,7 +52,7 @@ with tf.Session() as sess:
     ref_word = normalized_embeddings_matrix[word2index_map[sys.argv[2]]]
 
     cosine_dists = np.dot(normalized_embeddings_matrix, ref_word)
-    ff = np.argsort(cosine_dists)[::-1][0:6]
+    ff = np.argsort(cosine_dists)[::-1][0:10]
     for f in ff:
         print(index2word_map[f])
         print(cosine_dists[f])
