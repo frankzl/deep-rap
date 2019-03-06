@@ -9,8 +9,7 @@ from tensorflow.contrib.tensorboard.plugins import projector
 import tools.processing as pre
 
 batch_size = 256
-# embedding_dimension = 128
-embedding_dimension = 3
+embedding_dimension = 10
 negative_samples = 32
 LOG_DIR = "logs/phone2vec_v2"
 EPOCHS = 5

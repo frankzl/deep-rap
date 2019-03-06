@@ -94,7 +94,7 @@ train_step = tf.train.GradientDescentOptimizer(learningRate).minimize(loss)
 
 merged = tf.summary.merge_all()
 
-saver = tf.train.Saver(keep_checkpoint_every_n_hours=0.5, var_list={"embeddings": embeddings})
+saver = tf.train.Saver(keep_checkpoint_every_n_hours=0.5)
 
 TRAIN = True
 with tf.Session() as sess:
