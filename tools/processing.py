@@ -119,7 +119,7 @@ class Vocabulary(Dictionary):
         self._count = Counter(self.prep_text(text))
 
         self._keys  = list(self._count.keys())
-        self._keys.append("\n")
+        self._keys.append("\\n") # double "\\" to avoid null error in tensorboard projection
         self._keys.sort()
 
         self._dict  = {}
@@ -133,7 +133,7 @@ class Vocabulary(Dictionary):
         return element + " "
 
     def prep_text(self, text):
-        return text.replace("\n", " \n ").split(" ")
+        return text.replace("\n", " \n ").split()
 
     def get_count(self):
         return self._count

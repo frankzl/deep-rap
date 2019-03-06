@@ -10,54 +10,36 @@ import tools.processing as pre
 
 batch_size = 256
 # embedding_dimension = 128
-embedding_dimension = 10
+embedding_dimension = 3
 negative_samples = 32
-LOG_DIR = "logs/word2vec_intro"
-EPOCHS = 20 
+LOG_DIR = "logs/phone2vec"
+EPOCHS = 5
 
-tf.reset_default_graph()
-
-text = pre.get_text("data/cleaned-rap-lyrics/ref_text3.txt")
-
-sentences = []
-
-# Create two kinds of sentences - sequences of odd and even digits.
-# for i in range(10000):
-#     rand_odd_ints = np.random.choice(range(1, 10, 2), 3)
-#     sentences.append(" ".join([digit_to_word_map[r] for r in rand_odd_ints]))
-#     rand_even_ints = np.random.choice(range(2, 10, 2), 3)
-#     sentences.append(" ".join([digit_to_word_map[r] for r in rand_even_ints]))
-
-# text = pre.get_text("data/cleaned-rap-lyrics/lyrics_combined.txt")
-# text = pre.get_text("data/prepped/clean2_pac.txt")
-
-# sentences = text.split("\n")
+text = pre.get_text("data/phonem-rap-lyrics/phonem_all.txt")
 sentences = [text.replace( "\n", ";" )]
 
 # Map words to indices
 word2index_map = {}
 index = 0
 
-print(sentences[0][:300])
-
 vocab = pre.Vocabulary(sentences[0])
 
 for sent in sentences:
-    for word in sent.lower().split():
+    for word in sent.split():
         if word not in word2index_map:
             word2index_map[word] = index
             index += 1
-# index2word_map = {index: word for word, index in word2index_map.items()}
 index2word_map = vocab.index2word_map
 word2index_map = vocab._dict
 
 vocabulary_size = len(index2word_map)
+print("vocab_size: {} \n".format(vocabulary_size))
 
 # Generate skip-gram pairs
 skip_gram_pairs = []
 for sent in sentences:
-    tokenized_sent = sent.lower().split()
-    for i in range(1, len(tokenized_sent)-1):
+    tokenized_sent = sent.split()
+    for i in range(1, len(tokenized_sent) - 1):
         word_context_pair = [[word2index_map[tokenized_sent[i-1]],
                               word2index_map[tokenized_sent[i+1]]],
                              word2index_map[tokenized_sent[i]]]
@@ -74,13 +56,8 @@ def get_skipgram_batch(batch_size):
     y = [[skip_gram_pairs[i][1]] for i in batch]
     return x, y
 
-
-# batch example
-x_batch, y_batch = get_skipgram_batch(8)
-x_batch
-y_batch
-[index2word_map[word] for word in x_batch]
-[index2word_map[word[0]] for word in y_batch]
+# start tensorflow
+tf.reset_default_graph()
 
 # Input data, labels
 train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
@@ -114,6 +91,7 @@ learningRate = tf.train.exponential_decay(learning_rate=0.1,
                                           decay_rate=0.95,
                                           staircase=True)
 train_step = tf.train.GradientDescentOptimizer(learningRate).minimize(loss)
+
 merged = tf.summary.merge_all()
 
 saver = tf.train.Saver(keep_checkpoint_every_n_hours=0.5)
@@ -122,8 +100,7 @@ TRAIN = True
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
 
-    train_writer = tf.summary.FileWriter(LOG_DIR,
-                                         graph=tf.get_default_graph())
+    train_writer = tf.summary.FileWriter(LOG_DIR, graph=tf.get_default_graph())
 
     with open(os.path.join(LOG_DIR, 'metadata.tsv'), "w") as metadata:
         metadata.write('Name\tClass\n')
@@ -131,10 +108,12 @@ with tf.Session() as sess:
             metadata.write('%s\t%d\n' % (v, k))
 
     if glob.glob(LOG_DIR + '/*.meta'):
-        TRAIN = True
-        saver = tf.train.import_meta_graph(glob.glob(LOG_DIR + '/*.meta')[0])
-        saver.restore(sess, os.path.join(LOG_DIR, "final_embeddings.ckpt"))
+        TRAIN = False
+        # imported_meta = tf.train.import_meta_graph(glob.glob(LOG_DIR + '/*.meta')[0])
+        # imported_meta.restore(sess, tf.train.latest_checkpoint(LOG_DIR))
         # global_step = sess.run(global_step)
+        
+        saver.restore(sess, os.path.join(LOG_DIR, "final_embeddings.ckpt"))
         print("Restoring an old model and training it further..")
     else:
         print("Building model from scratch!")
@@ -148,27 +127,24 @@ with tf.Session() as sess:
     projector.visualize_embeddings(train_writer, config)
 
     if TRAIN:
-        global_step = 0
         for epoch in range(EPOCHS):
-
             print(f"\n\nepoch: {epoch}\n")
             
-            # epoch_steps = (int(len(skip_gram_pairs)/batch_size))
-            epoch_steps = 1000
+            epoch_steps = (int(len(skip_gram_pairs)/batch_size))
             for step in range(epoch_steps):
                 x_batch, y_batch = get_skipgram_batch(batch_size)
                 summary, _ = sess.run([merged, train_step],
                                     feed_dict={train_inputs: x_batch,
                                                 train_labels: y_batch})
-                train_writer.add_summary(summary, step + global_step)
+                train_writer.add_summary(summary, step)
                 
                 if step % 100 == 0:
                     loss_value = sess.run(loss,
                                             feed_dict={train_inputs: x_batch,
                                                         train_labels: y_batch})
                     print("Loss at %d/%d: %.5f" % (step, epoch_steps, loss_value))
-            
-            global_step += epoch_steps
+
+
             saver.save(sess, os.path.join(LOG_DIR, "embeddings.ckpt"), epoch)
                 
     saver.save(sess, os.path.join(LOG_DIR, "final_embeddings.ckpt"))
@@ -178,10 +154,9 @@ with tf.Session() as sess:
     normalized_embeddings = embeddings / norm
     normalized_embeddings_matrix = sess.run(normalized_embeddings)
 
-ref_word = normalized_embeddings_matrix[word2index_map["walk"]]
+ref_word = normalized_embeddings_matrix[word2index_map["Y"]]
 
 cosine_dists = np.dot(normalized_embeddings_matrix, ref_word)
-ff = np.argsort(cosine_dists)[::-1][0:50]
+ff = np.argsort(cosine_dists)[::-1][0:86]
 for f in ff:
-    print(index2word_map[f])
-    print(cosine_dists[f])
+    print(index2word_map[f], "\t", cosine_dists[f])

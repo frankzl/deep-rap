@@ -12,12 +12,13 @@ batch_size = 256
 # embedding_dimension = 128
 embedding_dimension = 10
 negative_samples = 32
-LOG_DIR = "logs/word2vec_intro"
-EPOCHS = 20 
+window_size = 5
+LOG_DIR = "logs/word2vec_v2"
+EPOCHS = 10
 
 tf.reset_default_graph()
 
-text = pre.get_text("data/cleaned-rap-lyrics/ref_text3.txt")
+text = pre.get_text("data/cleaned-rap-lyrics/final_2_pac_rakim_kid_cudi.txt")
 
 sentences = []
 
@@ -42,12 +43,6 @@ print(sentences[0][:300])
 
 vocab = pre.Vocabulary(sentences[0])
 
-for sent in sentences:
-    for word in sent.lower().split():
-        if word not in word2index_map:
-            word2index_map[word] = index
-            index += 1
-# index2word_map = {index: word for word, index in word2index_map.items()}
 index2word_map = vocab.index2word_map
 word2index_map = vocab._dict
 
@@ -56,15 +51,20 @@ vocabulary_size = len(index2word_map)
 # Generate skip-gram pairs
 skip_gram_pairs = []
 for sent in sentences:
+    for i in range(window_size):
+        sent = "PAD " + sent
+        sent = sent + " PAD"
+
     tokenized_sent = sent.lower().split()
-    for i in range(1, len(tokenized_sent)-1):
-        word_context_pair = [[word2index_map[tokenized_sent[i-1]],
-                              word2index_map[tokenized_sent[i+1]]],
-                             word2index_map[tokenized_sent[i]]]
-        skip_gram_pairs.append([word_context_pair[1],
-                                word_context_pair[0][0]])
-        skip_gram_pairs.append([word_context_pair[1],
-                                word_context_pair[0][1]])
+    for i in range(window_size, len(tokenized_sent) - window_size):
+        for n in range(1, window_size + 1):
+            word_context_pair = [[word2index_map[tokenized_sent[i-n]],
+                                word2index_map[tokenized_sent[i+n]]],
+                                word2index_map[tokenized_sent[i]]]
+            skip_gram_pairs.append([word_context_pair[1],
+                                    word_context_pair[0][0]])
+            skip_gram_pairs.append([word_context_pair[1],
+                                    word_context_pair[0][1]])
 
 def get_skipgram_batch(batch_size):
     instance_indices = list(range(len(skip_gram_pairs)))
@@ -73,14 +73,6 @@ def get_skipgram_batch(batch_size):
     x = [skip_gram_pairs[i][0] for i in batch]
     y = [[skip_gram_pairs[i][1]] for i in batch]
     return x, y
-
-
-# batch example
-x_batch, y_batch = get_skipgram_batch(8)
-x_batch
-y_batch
-[index2word_map[word] for word in x_batch]
-[index2word_map[word[0]] for word in y_batch]
 
 # Input data, labels
 train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
@@ -131,7 +123,7 @@ with tf.Session() as sess:
             metadata.write('%s\t%d\n' % (v, k))
 
     if glob.glob(LOG_DIR + '/*.meta'):
-        TRAIN = True
+        TRAIN = False
         saver = tf.train.import_meta_graph(glob.glob(LOG_DIR + '/*.meta')[0])
         saver.restore(sess, os.path.join(LOG_DIR, "final_embeddings.ckpt"))
         # global_step = sess.run(global_step)

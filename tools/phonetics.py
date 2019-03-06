@@ -28,6 +28,13 @@ def get_phonem_string_spaced(text):
         return ""
 
 
+def text_to_phonem(text):
+    default_wt = nltk.word_tokenize
+    words = default_wt(text)
+    all_phonems = (" ").join([get_phonem_string_spaced(word) for word in words]) 
+    return all_phonems
+
+
 def get_unknown_words():
     return list(unknown_words)
 
