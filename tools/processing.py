@@ -133,7 +133,7 @@ class Vocabulary(Dictionary):
         return element + " "
 
     def prep_text(self, text):
-        return text.replace("\n", " \n ").split(" ")
+        return text.replace("\n", " \n ").split()
 
     def get_count(self):
         return self._count
