@@ -25,42 +25,6 @@ def batch_data(num_data, batch_size):
         ix += batch_size
         yield batch_ixs
 
-def sample( seed_text, trainable, encoder, decoder, length=40):
-    """ prints the sampled string given the seed
-    seed_text: 
-        string of the seed, must have minimum length of our timestep size
-    trainable: 
-        object model to sample from
-    encoder:
-        encoder object to encode the seed_text
-    decoder:
-        decoder object to decode the output from the trainable
-    length: 
-        how many symbols we want to sample
-    """
-    
-    seed = encoder.encode( seed_text )
-
-    #to print the seed characters
-    seed_chars = seed_text
-    print( "------Sampling----------" )
-    print( f"seed: \t{seed_text}" )
-        
-    #predict next 500 characters
-    for i in range(500):
-        if i > 0:
-            seed = encoder.encode( seed_chars )
-            # Take only the last required symbols
-            seed = seed[:,-1*trainable.time_steps:,:]
-            
-        predicted = session.run([self.final_output], feed_dict = {self.X:seed})
-        predicted = np.asarray(predicted[0]).astype('float64')[0]
-        
-        predicted_symbol = decoder.decode( predicted )
-        seed_chars += predicted_symbol
-    print ('result:'+ seed_chars)
-
-
 def train(trainable, train_data, train_labels, alphabet, epochs=20, batch_size=128, temperature=0.5, embedding=False):
     """ takes a Trainable object and trains it on the given data
 
@@ -146,56 +110,6 @@ def train(trainable, train_data, train_labels, alphabet, epochs=20, batch_size=1
                 predicted_chars = alphabet._keys[np.argmax(probabilities)]
                 seed_chars += alphabet.format_element(predicted_chars)
             print ('Result:'+ seed_chars)
-    
-    trainable.hist = {
-        'train_losses': np.array(train_losses),
-        'train_accuracy': np.array(train_accs)
-    }
-
-
-def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_size=128):
-    train_losses = []
-    train_accs = []
-    
-    trainable.session = tf.Session()
-    session = trainable.session
-    
-    with session.as_default():
-        session.run(tf.global_variables_initializer())
-        tr_loss, tr_acc = session.run([trainable.loss, trainable.accuracy],
-                                      feed_dict={trainable.X: train_data,
-                                                 trainable.Y: train_labels})
-        train_losses.append(tr_loss)
-        train_accs.append(tr_acc)
-        
-        for epoch in range(epochs):
-             
-            for batch_ixs in batch_data(len(train_data), batch_size):
-                _ = session.run(trainable.train_step,
-                               feed_dict={
-                                   trainable.X: train_data[batch_ixs],
-                                   trainable.Y: train_labels[batch_ixs],
-                               })
-            tr_loss, tr_acc = session.run([trainable.loss, trainable.accuracy],
-                                           feed_dict={trainable.X: train_data,
-                                                      trainable.Y: train_labels
-                                                     })
-            train_losses.append(tr_loss)
-            train_accs.append(tr_acc)
-            
-            if(epoch + 1) % 1 == 0:
-                print(f"\n\nEpoch {epoch + 1}/{epochs}")
-                print(f"Loss:    \t {tr_loss}")
-                print(f"Accuracy:\t {tr_acc}")
-            
-            
-            #get on of training set as seed
-            # seed_text = train_data[0]
-            # seed_text = train_data[0]
-            seed_text = "as real as it seems the american dream\nain't nothing but another calculated schemes\nto get us locked up"
-            
-            sampler(trainable, seed_text[:trainable.time_steps])
-            
     
     trainable.hist = {
         'train_losses': np.array(train_losses),
