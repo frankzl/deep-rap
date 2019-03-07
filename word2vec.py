@@ -131,7 +131,7 @@ with tf.Session() as sess:
             metadata.write('%s\t%d\n' % (v, k))
 
     if glob.glob(LOG_DIR + '/*.meta'):
-        TRAIN = True
+        TRAIN = False
         saver = tf.train.import_meta_graph(glob.glob(LOG_DIR + '/*.meta')[0])
         saver.restore(sess, os.path.join(LOG_DIR, "final_embeddings.ckpt"))
         # global_step = sess.run(global_step)
@@ -178,7 +178,7 @@ with tf.Session() as sess:
     normalized_embeddings = embeddings / norm
     normalized_embeddings_matrix = sess.run(normalized_embeddings)
 
-ref_word = normalized_embeddings_matrix[word2index_map["walk"]]
+ref_word = normalized_embeddings_matrix[word2index_map["pad"]]
 
 cosine_dists = np.dot(normalized_embeddings_matrix, ref_word)
 ff = np.argsort(cosine_dists)[::-1][0:50]

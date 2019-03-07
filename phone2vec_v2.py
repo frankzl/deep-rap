@@ -107,9 +107,9 @@ with tf.Session() as sess:
             metadata.write('%s\t%d\n' % (v, k))
 
     if glob.glob(LOG_DIR + '/*.meta'):
-        TRAIN = True
+        TRAIN = False
         saver = tf.train.import_meta_graph(glob.glob(LOG_DIR + '/*.meta')[0])
-        saver.restore(sess, os.path.join(LOG_DIR, "embeddings.ckpt-0"))
+        saver.restore(sess, os.path.join(LOG_DIR, "final_embeddings.ckpt"))
         # global_step = sess.run(global_step)
         print("Restoring an old model and training it further..")
     else:
@@ -160,3 +160,11 @@ cosine_dists = np.dot(normalized_embeddings_matrix, ref_word)
 ff = np.argsort(cosine_dists)[::-1][0:86]
 for f in ff:
     print(index2word_map[f], "\t", cosine_dists[f])
+
+print(normalized_embeddings_matrix)
+# saving embedding matrix to file
+with open(os.path.join(LOG_DIR, "embedding.txt"), 'w') as f:
+    for i in range(vocabulary_size):
+      embed = normalized_embeddings_matrix[i, :]
+      word = index2word_map[i]
+      f.write('%s %s\n' % (word, ' '.join(map(str, embed))))
