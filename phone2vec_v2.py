@@ -161,7 +161,6 @@ ff = np.argsort(cosine_dists)[::-1][0:86]
 for f in ff:
     print(index2word_map[f], "\t", cosine_dists[f])
 
-print(normalized_embeddings_matrix)
 # saving embedding matrix to file
 with open(os.path.join(LOG_DIR, "embedding.txt"), 'w') as f:
     for i in range(vocabulary_size):

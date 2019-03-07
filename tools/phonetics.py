@@ -59,10 +59,10 @@ def create_unknown_dict_from_text(unknown_list):
     return unknown_dict
 
 
-def update_arpabet(dict):
+def update_arpabet(dictionary):
     global arpabet
     global unknown_words
-    arpabet = {**arpabet, **dict}
+    arpabet = {**arpabet, **dictionary}
     unknown_words = set()
     
 
