@@ -26,6 +26,22 @@ def batch_data(num_data, batch_size):
         yield batch_ixs
 
 def train(trainable, train_data, train_labels, alphabet, epochs=20, batch_size=128, temperature=0.5, embedding=False):
+    """ takes a Trainable object and trains it on the given data
+
+    Parameters
+    ----------
+    trainable: Trainable
+        The model to be trained
+
+    train_data:
+        The data used for training
+
+    train_labels:
+        The labels for training
+
+    alphabet
+
+    """
     train_losses = []
     train_accs = []
     
@@ -59,7 +75,7 @@ def train(trainable, train_data, train_labels, alphabet, epochs=20, batch_size=1
                 print(f"Loss:    \t {tr_loss}")
                 print(f"Accuracy:\t {tr_acc}")
 
-            #to print the seed 40 characters
+            #to print the seed characters
             seed_chars = ''
 
             if embedding:
@@ -78,7 +94,7 @@ def train(trainable, train_data, train_labels, alphabet, epochs=20, batch_size=1
                 seed_chars += alphabet.format_element(char)
             print ("Seed:" + seed_chars)
     
-            #predict next 500 characters
+            #predict next 500
             for i in range(500):
                 if i > 0:
                     if embedding:
