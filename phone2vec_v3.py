@@ -17,17 +17,9 @@ EPOCHS = 5
 text = pre.get_text("data/phonem-rap-lyrics/phonem_all.txt")
 sentences = [text.replace( "\n", ";" )]
 
-# Map words to indices
-word2index_map = {}
-index = 0
-
 vocab = pre.Vocabulary(sentences[0])
 
-for sent in sentences:
-    for word in sent.split():
-        if word not in word2index_map:
-            word2index_map[word] = index
-            index += 1
+# Map words to indices
 index2word_map = vocab.index2word_map
 word2index_map = vocab._dict
 
@@ -107,7 +99,7 @@ with tf.Session() as sess:
             metadata.write('%s\t%d\n' % (v, k))
 
     if glob.glob(LOG_DIR + '/*.meta'):
-        TRAIN = False
+        TRAIN = True
         saver = tf.train.import_meta_graph(glob.glob(LOG_DIR + '/*.meta')[0])
         saver.restore(sess, os.path.join(LOG_DIR, "final_embeddings.ckpt"))
         # global_step = sess.run(global_step)
