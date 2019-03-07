@@ -127,7 +127,8 @@ class Vocabulary(Dictionary):
         for idx, key in enumerate(self._keys):
             self._dict[key] = idx
 
-        self.index2word_map = {index: word for word, index in self._dict.items()}
+        self.index2word = {index: word for word, index in self._dict.items()}
+        self.word2index = self._dict
 
     def format_element(self, element):
         return element + " "
@@ -158,7 +159,8 @@ class Alphabet(Dictionary):
         for idx, key in enumerate(self._keys):
             self._dict[key] = idx
         
-        self.index2word_map = {index: word for word, index in self._dict.items()}
+        self.index2word = {index: word for word, index in self._dict.items()}
+        self.word2index = self._dict
 
     def prep_text(self, text):
         return text
