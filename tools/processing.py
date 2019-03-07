@@ -8,6 +8,18 @@ def write_text(file_name, text):
     f = open(file_name, 'w+')
     f.write( text )
 
+def create_data_label_pairs(text, time_steps, step=1):
+    '''
+    creates data-label pairs from the given text
+    '''
+    input_chars = []
+    output_char = []
+    
+    for i in range(0, len(text) - time_steps, step):
+        input_chars.append(text[i:i+time_steps])
+        output_char.append(text[i+time_steps])
+    return input_chars, output_char
+
 class Dictionary:
 
     def __init__(self, text):
