@@ -47,7 +47,7 @@ print(sentences[0][:300])
 
 vocab = pre.Vocabulary(sentences[0])
 
-index2word_map = vocab.index2word_map
+index2word_map = vocab.index2word
 word2index_map = vocab._dict
 
 vocabulary_size = len(index2word_map)

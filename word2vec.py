@@ -48,7 +48,7 @@ for sent in sentences:
             word2index_map[word] = index
             index += 1
 # index2word_map = {index: word for word, index in word2index_map.items()}
-index2word_map = vocab.index2word_map
+index2word_map = vocab.index2word
 word2index_map = vocab._dict
 
 vocabulary_size = len(index2word_map)
