@@ -53,6 +53,17 @@ Basically, the approach is the same as in 00, but this time we have a different 
 <hr>
 
 #### 03 - Applying Multiple Layers <a name="03"></a>
+The maximum accuracy from chapter [02](#02) was xxx. By stacking LSTM cells, we increase the complexity of our model, so that it can solve more complex problems.
+
+While this appro
+
+Seed: 
+killin people left and right 
+use a gun cool homie 
+that is right
+
+Sampling:
+
 <hr>
 
 #### 04 - Embedding the Words <a name="04"></a>
