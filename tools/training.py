@@ -234,8 +234,7 @@ class MaxOneHotDecoder(Decoder):
     Decodes a 1-Hot Encoded vector (prediction) to a word
     """
     def __init__(self, name, index2word, temperature=0.5):
-        super(OneHotDecoder, self).__init__(name)
-        self.temperature = temperature
+        super(MaxOneHotDecoder, self).__init__(name)
         self.index2word = index2word 
         
     def decode(self, predicted):
