@@ -175,9 +175,38 @@ The rest of the words that are still not recognized by Glove, are mapped to the 
 <hr>
 
 #### 09 - Glove Applied <a name="08"></a>
+
+We are using the GloVe embedding, which is trained with 840 billion words with a dimension of 300. In order to use it properly, we mapped our existing words of our three combined rap 
+lyrics with GloVe. Also, we combined all our findings and written code into several libraries and classes to be able to build and train our model efficiently.
+
+Remark: Bonus book with less data available at 09.1-(small)glove-applied
 <hr>
 
-#### 10 - Glove and Phonem <a name="09"></a>
+#### 10 - Create Phonetic Dictionary <a name="09"></a>
+
+We are using the CMU pronouncing dictionary which is provided with the nltk-toolkit. And the LOGIOS lexicon tool (http://www.speech.cs.cmu.edu/tools/lextool.html).
+The CMU provides a dictionary (a so called arpabet) in order to extract phonetic information of a word. Furthermore, for words which the arpabet doesn't know, 
+the LOGIOS tool is using a generative process to extract the needed phonetic information.
+
+At last we are creating a textfile which is essentially the combined rap text but encoded in phonetics.
+
+<hr>
+
+#### 10.1 - Phonetics2Vec <a name="10"></a>
+We want to apply the method of word2vec onto the phonetics in order to get an embedding which aids our text generation process. The reason is, that in rap lyrics a predicted word depends not only on the context but especially on previous rhyming words.
+
+The same algorithm we have used to train our first word2vec we are using to train the phone2vec model. 
+In the last step the cosine distance is used to determine similar phonetics to a given phonetic.
+
+<hr>
+
+#### 11 - Work In Progress: Glove and Phonetics applied <a name="11"></a>
+
+We want to use the added information of phonetics of a word within a sentence to get more accurate rhyme words.
+As described in chapter 10.1, a word within rap lyrics has to depend on the context plus its rhyming predecessors.
+We want to use the extra information from the phonems to punish "not rhyming" words. 
+
+Unfortunately, we were not able to finish this last step, because of errors we were unable to resolve.
 
 <hr>
 
