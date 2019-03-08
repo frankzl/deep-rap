@@ -31,7 +31,18 @@ To start our project, we predict letter by letter. Given a sequence of text, we 
 
 We can repeat these steps to generate an arbitrary number of text. Of course we have trained the model before on a rap text by 2pac.
 
-Basically we are doing a multiclass classification, where we try to classify the next letter given the predecessors. In the notebook, we used a single LSTM cell followed by a linear output layer.
+Accuracy: 49.46 %
+
+**Seed:** <br>
+as real as it seems
+
+**Sampling:** <br>
+as real as it seems **willed to dene<br>
+cares and beave<br>
+you kep soun<br>
+the doudn't wen the care done**
+
+We are doing a multiclass classification, where we try to classify the next letter given the predecessors. In the notebook, we used a single LSTM cell followed by a linear output layer.
 
 <hr>
 
@@ -55,24 +66,94 @@ Basically, the approach is the same as in 00, but this time we have a different 
 #### 03 - Applying Multiple Layers <a name="03"></a>
 The maximum accuracy from chapter [02](#02) was xxx. By stacking LSTM cells, we increase the complexity of our model, so that it can solve more complex problems.
 
-While this appro
+While this approach seems to yield relatively high accuracy, the samples are still not very useful.
 
-Seed: 
-killin people left and right 
-use a gun cool homie 
+**Seed:** <br>
+killin people left and right <br>
+use a gun cool homie <br>
 that is right
 
-Sampling:
+**Sampling:** <br>
+killin people left and right <br>
+use a gun cool homie <br>
+**that is right so i bust it alone is know think i got up y'all mine <br>
+out this thing a clip for can on your got up**
 
 <hr>
 
 #### 04 - Embedding the Words <a name="04"></a>
+
+We now use an embedding lookup for our data. Instead of feeding in 1-hot-encoded words, we feed in the indices for the words and perform an embedding lookup on those words in an embedding matrix that we can also learn.
+
+**Architecture: <br>**
+
+sequence of words &emsp;=>&emsp; sequence of indices &emsp;=>&emsp; sequence of vectors in embedding space &emsp;=>&emsp; Single Layer RNN &emsp;=>&emsp; outputs 1-Hot-Vector<br>
+
+**Seed:**<br>
+while i go down the street<br>
+while i go down the street<br>
+you was lookin' at me <br>
+is this even good or is it just bad <br>
+is this even good or is it mad<br>
+
+**Sampling:**<br>
+while i go down the street<br>
+while i go down the street<br>
+you was lookin' at me <br>
+is this even good or is it just bad <br>
+is this even good or is it mad<br>
+**your brother and your trifeass wife wants to do me <br>
+on a mountain and still couldn't top me**
+
+<hr>
+
+#### 04.1 - Bonus Book - Trying a different text
+
+Here we tried setting a very low time step for our RNN. It is our goal to feed a short sentence and generate the next rap line from that.
+Therefore setting the time step to 6, allows us to infer the next word from the last 6 words.
+
+This turns out to be pretty bad despite high accuracy.
+
+Also we tried out a different rapper here (Rakim)
+
 <hr>
 
 #### 05 - Cleaning the Rap <a name="05"></a>
+To be honest, this was the worst part of the whole project. It involved:
+1. building a new dictionary
+2. expanding contractions
+3. removing extra letters like tooooools => tools
+4. numbers to words: 1 => one
+5. correcting spelling mistakes, e.g. somthin => something
+6. rebuilding the dictionary with newly found words
+
+There are 4 notebooks on this, order of creation:
+1. 05-text-cleanup
+2. 05-text-cleanup-rakim
+3. 05-text-cleanup-kidcudi
+
+I recommend checking out 3. (I think 1. is a bit messy tbh)
+
+Seriously, this was the worst part
+
 <hr>
 
 #### 06 - Working on Clean Rap <a name="10"></a>
+Here we use a Embedded Single Layer RNN from chapter [04](#04) on our freshly cleaned data.
+The result is pretty good! 
+
+(Note that we replaced **\n** with **;** and our words are only one **space** apart. In the following we replaced ; with \n for readability)
+
+**Seed:**<br>
+when i was thirteen <br>
+i had my first love <br>
+there was nobody that could put hands on my baby <br>
+and nobody came between us that could ever come above <br>
+
+**Sampling:**<br>
+when i was thirteen <br> i had my first love <br> there was nobody that could put hands on my baby <br> and nobody came between us that could ever come above <br>
+**but now i am guilty of falling for his girlfriend <br> i know it is wrong but it is not a cop damn <br> i am trapped in the hell <br> one if you will find out my homies <br> it is the nigga that you the nigga**
+
 <hr>
 
 #### 07 - Building Embeddings <a name="06"></a>
