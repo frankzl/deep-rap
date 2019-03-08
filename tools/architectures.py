@@ -173,6 +173,9 @@ class Trainable:
 
         self.time_steps = None
 
+        tf.reset_default_graph()
+
+
 class SingleLayerRNN(Trainable):
     def __init__(self, name):
         super().__init__(name)
