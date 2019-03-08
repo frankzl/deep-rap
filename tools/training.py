@@ -313,11 +313,19 @@ class IndexWordEncoder(Encoder):
         """
         Encodes our sequences of words to sequences of indices
         """
+        max_len = 0
+        for seq in sequences:
+            if len(seq) > max_len:
+                max_len = len(seq)
+
         encoded_sequences = []
         for seq in sequences:
             
             # encoded = np.zeros( len(seq) )
             encoded = [ self.word2index[word] for word in seq ]
+            diff = max_len - len(seq)
+            if diff > 0:
+                encoded.extend([0] * diff)
             
             encoded_sequences.append(encoded)
         
