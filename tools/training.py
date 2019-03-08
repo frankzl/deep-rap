@@ -221,6 +221,18 @@ class OneHotDecoder(Decoder):
         predicted = sample_from_distribution(predicted, temperature=self.temperature)
         return self.index2word[ np.argmax(predicted) ]
 
+class MaxOneHotDecoder(Decoder):
+    """
+    Decodes a 1-Hot Encoded vector (prediction) to a word
+    """
+    def __init__(self, name, index2word, temperature=0.5):
+        super(OneHotDecoder, self).__init__(name)
+        self.temperature = temperature
+        self.index2word = index2word 
+        
+    def decode(self, predicted):
+        return self.index2word[ np.argmax(predicted) ]
+
 class OneHotWordEncoder(Encoder):
     """
     Encodes sequences of words to sequences of 1-Hot Encoded vectors
