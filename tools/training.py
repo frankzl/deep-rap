@@ -74,7 +74,7 @@ def sample( seed_text, trainable, encoder, decoder, length=40 ):
 
 
 def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_size=128, log_dir=None, 
-                embedding_matrix=None):
+                embedding_matrix=None, retrain=False):
     train_losses = []
     train_accs = []
     
@@ -90,6 +90,7 @@ def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_s
             session.run(trainable.embedding_init, feed_dict={trainable.embedding_placeholder: embedding_matrix})
 
         if log_dir:
+            LOG_DIR = log_dir
             if not os.path.exists(LOG_DIR):
                 os.makedirs(LOG_DIR, exist_ok=True)
             if glob.glob(LOG_DIR + "/*.meta"):
@@ -99,7 +100,9 @@ def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_s
             else:
                 print("Building model from scratch! \n Saving into: '{}'".format(LOG_DIR))
         else:
-            LOG_DIR = "../logs/train_model"
+            LOG_DIR = "logs/train_model"
+            if not os.path.exists(LOG_DIR):
+                os.makedirs(LOG_DIR, exist_ok=True)
             print("Building model from scratch! \n Saving into: '{}'".format(LOG_DIR))
 
         tr_loss, tr_acc = session.run([trainable.loss, trainable.accuracy],
@@ -108,39 +111,40 @@ def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_s
         train_losses.append(tr_loss)
         train_accs.append(tr_acc)
         
-        for epoch in range(epochs):
-             
-            for batch_ixs in batch_data(len(train_data), batch_size):
-                _ = session.run(trainable.train_step,
-                               feed_dict={
-                                   trainable.X: train_data[batch_ixs],
-                                   trainable.Y: train_labels[batch_ixs],
-                               })
-            tr_loss, tr_acc = session.run([trainable.loss, trainable.accuracy],
-                                           feed_dict={trainable.X: train_data,
-                                                      trainable.Y: train_labels
-                                                     })
-            train_losses.append(tr_loss)
-            train_accs.append(tr_acc)
-            
-            if(epoch + 1) % 1 == 0:
-                # saving the session into "model"
-                saver.save(session, os.path.join(LOG_DIR, "model"))
-                print(f"\n\nEpoch {epoch + 1}/{epochs}")
-                print(f"Loss:    \t {tr_loss}")
-                print(f"Accuracy:\t {tr_acc}")
-            
-            
-            #get on of training set as seed
-            # seed_text = train_data[0]
-            # seed_text = train_data[0]
-            seed_text = """as real as it seems the american dream
-ain't nothing but another calculated schemes\nto get us locked up shot up back in chains
-to deny us of the future rob our names\nkept my history of mystery but now i see
-the american dream wasn't meant for me\ncause lady liberty is a hypocrite she lied to me\npromised me freedom education equality
-never gave me nothing but slavery\nand now look at how dangerous you made me"""
-            
-            sampler(trainable, seed_text)
+        if retrain:
+            for epoch in range(epochs):
+                
+                for batch_ixs in batch_data(len(train_data), batch_size):
+                    _ = session.run(trainable.train_step,
+                                feed_dict={
+                                    trainable.X: train_data[batch_ixs],
+                                    trainable.Y: train_labels[batch_ixs],
+                                })
+                tr_loss, tr_acc = session.run([trainable.loss, trainable.accuracy],
+                                            feed_dict={trainable.X: train_data,
+                                                        trainable.Y: train_labels
+                                                        })
+                train_losses.append(tr_loss)
+                train_accs.append(tr_acc)
+                
+                if(epoch + 1) % 1 == 0:
+                    # saving the session into "model"
+                    saver.save(session, os.path.join(LOG_DIR, "model"))
+                    print(f"\n\nEpoch {epoch + 1}/{epochs}")
+                    print(f"Loss:    \t {tr_loss}")
+                    print(f"Accuracy:\t {tr_acc}")
+                
+                
+                #get on of training set as seed
+                # seed_text = train_data[0]
+                # seed_text = train_data[0]
+                seed_text = """as real as it seems the american dream
+    ain't nothing but another calculated schemes\nto get us locked up shot up back in chains
+    to deny us of the future rob our names\nkept my history of mystery but now i see
+    the american dream wasn't meant for me\ncause lady liberty is a hypocrite she lied to me\npromised me freedom education equality
+    never gave me nothing but slavery\nand now look at how dangerous you made me"""
+                
+                sampler(trainable, seed_text)
             
     
     trainable.hist = {
