@@ -157,9 +157,21 @@ when i was thirteen <br> i had my first love <br> there was nobody that could pu
 <hr>
 
 #### 07 - Building Embeddings <a name="06"></a>
+We train our own embedding on a collection of rap texts.
+For this we use the model word2vec to produce our very own embedding.
+
+Didn't work out that well though, since we did not have enough data.
+
 <hr>
 
 #### 08 - Glovely Embedded <a name="07"></a>
+
+Contains some minor corrections of the cleaned up text (repeated character problem). Using the Glove embedding, we can translate almost all of our used words into a feature space of 300 dimensions.
+
+A portion of the unknowns can be corrected using our **tools.spell_correction** module. This module was created after chapter [05](#05).
+
+The rest of the words that are still not recognized by Glove, are mapped to the mean of the embedding vectors.
+
 <hr>
 
 #### 09 - Glove Applied <a name="08"></a>
