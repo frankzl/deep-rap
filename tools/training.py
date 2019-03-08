@@ -90,7 +90,6 @@ def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_s
             session.run(trainable.embedding_init, feed_dict={trainable.embedding_placeholder: embedding_matrix})
 
         if log_dir:
-            LOG_DIR = "../" + log_dir
             if not os.path.exists(LOG_DIR):
                 os.makedirs(LOG_DIR, exist_ok=True)
             if glob.glob(LOG_DIR + "/*.meta"):
