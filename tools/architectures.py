@@ -242,7 +242,7 @@ class SingleLayerRNN(Trainable):
 
 def lstm_layer(num_layers, hidden_layer_size):
     cells = []
-    for i in range(num_layers):
+    for _ in range(num_layers):
         lstm_cell = tf.nn.rnn_cell.LSTMCell(hidden_layer_size)
         cells.append(lstm_cell)
 
@@ -335,3 +335,54 @@ class SimpleMultiLayerRNN(Trainable):
 
             self.correct_prediction = tf.equal(tf.argmax(self.Y,1), tf.argmax(self.final_output, 1))
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))*100
+
+class MultiLayerRNN_v2(Trainable):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def build(self, num_layers, hidden_layer_size, vocab_size, time_steps, l2_reg=0.0, embedding_dim=None):
+        self.time_steps = time_steps
+        self.vocab_size = vocab_size
+
+        self.X = tf.placeholder(tf.int32, shape=[None, time_steps], name="data")
+        self.Y = tf.placeholder(tf.int16, shape=[None, vocab_size], name="labels")
+        self._seqlens = _seqlens = tf.placeholder(tf.int32, shape=[None])
+
+        if(embedding_dim is None):
+            embedding_dimension = 64
+            embeddings = tf.Variable(tf.random_uniform([vocab_size, embedding_dimension], -1.0, 1.0))
+            embed = tf.nn.embedding_lookup(embeddings, self.X)
+        else:
+            # define pretrained embedding
+            self.embedding_placeholder = tf.placeholder(tf.float32, [vocab_size, embedding_dim])
+            embeddings = tf.Variable(tf.constant(0.0, shape=[vocab_size, embedding_dim]), trainable=True)
+            self.embedding_init = embeddings.assign(self.embedding_placeholder)
+            embed = tf.nn.embedding_lookup(embeddings, self.X)
+
+
+        with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
+
+            self.stacked_cells = lstm_layer(num_layers, hidden_layer_size)
+
+            self.outputs, self.states = tf.nn.dynamic_rnn(
+                    self.stacked_cells, embed, sequence_length=None, dtype=tf.float32)
+
+            self.last_rnn_output = self.states[num_layers - 1][1]
+
+            self.final_output, W_out, b_out = full_layer(self.last_rnn_output, vocab_size)
+
+            self.weights.append(W_out)
+            self.biases.append(b_out)
+
+            self.softmax = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.final_output,
+                    labels=self.Y)
+            self.cross_entropy_loss = tf.reduce_mean(self.softmax)
+
+            self.loss = self.cross_entropy_loss
+
+            self.optimizer = tf.train.AdamOptimizer()
+            self.train_step = self.optimizer.minimize(self.loss)
+
+            self.correct_prediction = tf.equal(tf.argmax(self.Y,1), tf.argmax(self.final_output, 1))
+            self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))*100
+

@@ -69,7 +69,8 @@ def sample( seed_text, trainable, encoder, decoder, length=40 ):
     print ('result:'+ seed_chars)
 
 
-def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_size=128, log_dir=None):
+def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_size=128, log_dir=None, 
+                embedding_matrix=None):
     train_losses = []
     train_accs = []
     
@@ -80,6 +81,9 @@ def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_s
 
     with session.as_default():
         session.run(tf.global_variables_initializer())
+        # assign pretrained embedding matrix
+        if embedding_matrix:
+            session.run(trainable.embedding_init, feed_dict={trainable.embedding_placeholder: embedding_matrix})
 
         if log_dir:
             LOG_DIR = "../" + log_dir
@@ -222,17 +226,20 @@ class OneHotWordEncoder(Encoder):
         """
         Encodes our sequences of words to sequences of 1-Hots
         """
-        encoded_sequences = []
-        for seq in sequences:
+        try:
+            encoded_sequences = []
+            for seq in sequences:
+                
+                encoded = np.zeros( ( len(seq), len(self.word2index) ) )
+                
+                for idx, word in enumerate(seq):
+                    encoded[idx][ self.word2index[word] ] = 1
+                
+                encoded_sequences.append(encoded)
             
-            encoded = np.zeros( ( len(seq), len(self.word2index) ) )
-            
-            for idx, word in enumerate(seq):
-                encoded[idx][ self.word2index[word] ] = 1
-            
-            encoded_sequences.append(encoded)
-        
-        return np.array(encoded_sequences)
+            return np.array(encoded_sequences)
+        except Exception as e:
+            print(e)
     
     def encode_raw(self, text):
         """
