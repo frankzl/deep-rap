@@ -188,3 +188,71 @@ class OneHotDecoder(Decoder):
     def decode(self, predicted):
         predicted = sample_from_distribution(predicted, temperature=self.temperature)
         return self.index2word[ np.argmax(predicted) ]
+
+class OneHotWordEncoder(Encoder):
+    """
+    Encodes sequences of words to sequences of 1-Hot Encoded vectors
+    """
+    
+    def __init__(self, name, word2index):
+        super(OneHotWordEncoder, self).__init__(name)
+        self.word2index = word2index
+        
+    def encode(self, sequences):
+        """
+        Encodes our sequences of words to sequences of 1-Hots
+        """
+        encoded_sequences = []
+        for seq in sequences:
+            
+            encoded = np.zeros( ( len(seq), len(self.word2index) ) )
+            
+            for idx, word in enumerate(seq):
+                encoded[idx][ self.word2index[word] ] = 1
+            
+            encoded_sequences.append(encoded)
+        
+        return np.array(encoded_sequences)
+    
+    def encode_raw(self, text):
+        """
+        Encodes a text to sequences of 1-Hots (needed for sampling)
+        """
+        text = text.replace("\n", " \\n ")
+        text = text.replace(" +", " ")
+        words = text.split(" ")
+        encoded = np.zeros( ( len(words), len(self.word2index) ) )
+        
+        for idx, word in enumerate(words):
+            if word != "":
+                encoded[idx][ self.word2index[word] ] = 1
+        
+        return np.array( [encoded] )
+        
+    
+    def encode_labels(self, labels):
+        """
+        Encodes the labels (sequences of one word)
+        """
+        
+        encoded = []
+        
+        for label in labels:
+            one_hot_vec = np.zeros(len(self.word2index), dtype=int)
+            one_hot_vec[ self.word2index[label] ] = 1
+            encoded.append( one_hot_vec )
+            
+        return np.array(encoded)
+    
+class OneHotWordDecoder(Decoder):
+    """
+    Decodes a 1-Hot Encoded vector (prediction) to a word
+    """
+    def __init__(self, name, index2word, temperature=0.5):
+        super(OneHotWordDecoder, self).__init__(name)
+        self.temperature = temperature
+        self.index2word = index2word 
+        
+    def decode(self, predicted):
+        predicted = sample_from_distribution(predicted, temperature=self.temperature)
+        return " " + self.index2word[ np.argmax(predicted) ].replace("\\n","\n")
