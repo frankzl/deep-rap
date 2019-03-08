@@ -1,5 +1,7 @@
 import numpy as np
 import tensorflow as tf
+import glob
+import os
 
 
 def batch_data(num_data, batch_size):
@@ -71,15 +73,31 @@ def sample( seed_text, trainable, encoder, decoder, length=40 ):
     print ('result: \n'+ seed_chars)
 
 
-def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_size=128):
+def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_size=128, log_dir=None):
     train_losses = []
     train_accs = []
     
     trainable.session = tf.Session()
     session = trainable.session
     
+    saver = tf.train.Saver(max_to_keep=4, keep_checkpoint_every_n_hours=0.5)
+
     with session.as_default():
         session.run(tf.global_variables_initializer())
+
+        if log_dir:
+            LOG_DIR = "../" + log_dir
+            if not os.path.exists(LOG_DIR):
+                os.makedirs(LOG_DIR, exist_ok=True)
+            if glob.glob(LOG_DIR + "/*.meta"):
+                saver = tf.train.import_meta_graph(glob.glob(LOG_DIR + '/*.meta')[0])
+                saver.restore(session, os.path.join(LOG_DIR, "model"))
+                print("Restoring an old model from '{}' and training it further..".format(LOG_DIR))
+            else:
+                print("Building model from scratch! \n Saving into: '{}'".format(LOG_DIR))
+        else:
+            print("Building model from scratch! \n Saving into: '{}'".format(LOG_DIR))
+
         tr_loss, tr_acc = session.run([trainable.loss, trainable.accuracy],
                                       feed_dict={trainable.X: train_data,
                                                  trainable.Y: train_labels})
@@ -102,6 +120,8 @@ def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_s
             train_accs.append(tr_acc)
             
             if(epoch + 1) % 1 == 0:
+                # saving the session into "model"
+                saver.save(session, os.path.join(LOG_DIR, "model"))
                 print(f"\n\nEpoch {epoch + 1}/{epochs}")
                 print(f"Loss:    \t {tr_loss}")
                 print(f"Accuracy:\t {tr_acc}")
