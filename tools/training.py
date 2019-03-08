@@ -83,6 +83,7 @@ def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_s
     
     saver = tf.train.Saver(max_to_keep=4, keep_checkpoint_every_n_hours=0.5)
 
+    TRAIN = True
     with session.as_default():
         session.run(tf.global_variables_initializer())
         # assign pretrained embedding matrix
@@ -94,9 +95,12 @@ def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_s
             if not os.path.exists(LOG_DIR):
                 os.makedirs(LOG_DIR, exist_ok=True)
             if glob.glob(LOG_DIR + "/*.meta"):
+                TRAIN = retrain
                 saver = tf.train.import_meta_graph(glob.glob(LOG_DIR + '/*.meta')[0])
                 saver.restore(session, os.path.join(LOG_DIR, "model"))
-                print("Restoring an old model from '{}' and training it further..".format(LOG_DIR))
+                print("Restoring an old model from '{}'".format(LOG_DIR))
+                if retrain:
+                    print("and training it further..")
             else:
                 print("Building model from scratch! \n Saving into: '{}'".format(LOG_DIR))
         else:
@@ -111,7 +115,7 @@ def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_s
         train_losses.append(tr_loss)
         train_accs.append(tr_acc)
         
-        if retrain:
+        if TRAIN:
             for epoch in range(epochs):
                 
                 for batch_ixs in batch_data(len(train_data), batch_size):
