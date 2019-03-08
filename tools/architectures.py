@@ -3,14 +3,12 @@ import tensorflow as tf
 
 def batch_data(num_data, batch_size):
     """ Yield batches with indices until epoch is over.
-
     Parameters
     ----------
     num_data: int
         The number of samples in the dataset.
     batch_size: int
         The batch size used using training.
-
     Returns
     -------
     batch_ixs: np.array of ints with shape [batch_size,]
@@ -27,20 +25,15 @@ def batch_data(num_data, batch_size):
 
 def train(trainable, train_data, train_labels, alphabet, epochs=20, batch_size=128, temperature=0.5, embedding=False):
     """ takes a Trainable object and trains it on the given data
-
     Parameters
     ----------
     trainable: Trainable
         The model to be trained
-
     train_data:
         The data used for training
-
     train_labels:
         The labels for training
-
     alphabet
-
     """
     train_losses = []
     train_accs = []
@@ -242,7 +235,7 @@ class SingleLayerRNN(Trainable):
 
 def lstm_layer(num_layers, hidden_layer_size):
     cells = []
-    for _ in range(num_layers):
+    for i in range(num_layers):
         lstm_cell = tf.nn.rnn_cell.LSTMCell(hidden_layer_size)
         cells.append(lstm_cell)
 
@@ -317,6 +310,144 @@ class SimpleMultiLayerRNN(Trainable):
             self.outputs, self.states = tf.nn.dynamic_rnn(
                     self.stacked_cells, self.X, dtype=tf.float32)
             
+            self.last_rnn_output = self.states[num_layers - 1][1]
+
+            self.final_output, W_out, b_out = full_layer(self.last_rnn_output, vocab_size)
+
+            self.weights.append(W_out)
+            self.biases.append(b_out)
+
+            self.softmax = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.final_output,
+                    labels=self.Y)
+            self.cross_entropy_loss = tf.reduce_mean(self.softmax)
+
+            self.loss = self.cross_entropy_loss
+
+            self.optimizer = tf.train.AdamOptimizer()
+            self.train_step= self.optimizer.minimize(self.loss)
+
+            self.correct_prediction = tf.equal(tf.argmax(self.Y,1), tf.argmax(self.final_output, 1))
+            self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))*100
+
+
+class SingleLayerLSTMClassifier(Trainable):
+    def __init__(self, name):
+        super().__init__(name)
+        
+    def build(self, hidden_layer_size, vocab_size, time_steps, l2_reg=0.0):
+        self.time_steps = time_steps
+        self.vocab_size = vocab_size
+        
+        self.X = tf.placeholder(tf.float32, shape=[None, time_steps, vocab_size], name="data")
+        self.Y = tf.placeholder(tf.int16, shape=[None, vocab_size], name="labels")
+        
+        _X = tf.transpose(self.X, [1, 0, 2])
+        _X = tf.reshape(_X, [-1, vocab_size])
+        _X = tf.split(_X, time_steps, 0)
+        
+        with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
+            
+            # 1x RNN LSTM Cell
+            self.rnn_cell   = tf.nn.rnn_cell.LSTMCell(hidden_layer_size)
+            
+            self.outputs, _ = tf.contrib.rnn.static_rnn(self.rnn_cell, _X, dtype=tf.float32)
+            
+            # 1x linear output layer
+            W_out = tf.Variable(tf.truncated_normal([hidden_layer_size, vocab_size], 
+                                                 mean=0, stddev=.01))
+            b_out = tf.Variable(tf.truncated_normal([vocab_size],
+                                                mean=0, stddev=.01))
+            self.weights.append(W_out)
+            self.biases.append(b_out)
+            
+            self.last_rnn_output = self.outputs[-1]
+            self.final_output    = self.last_rnn_output @ W_out + b_out
+            
+            # softmax cross entropy as our loss function (between 36 classes)
+            self.softmax = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.final_output,
+                                                                labels=self.Y)
+            self.cross_entropy_loss = tf.reduce_mean(self.softmax)
+            
+            self.loss = self.cross_entropy_loss
+            
+            self.optimizer = tf.train.AdamOptimizer()
+            self.train_step= self.optimizer.minimize(self.loss)
+            
+            self.correct_prediction = tf.equal(tf.argmax(self.Y,1), tf.argmax(self.final_output, 1))
+            self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))*100
+    
+class EmbeddedSingleLayerRNN(Trainable):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def build(self, hidden_layer_size, vocab_size, embedding_dimension, time_steps, l2_reg=0.0):
+        self.time_steps = time_steps
+        self.vocab_size = vocab_size
+
+        self.X = tf.placeholder(tf.int32, shape=[None, time_steps], name="data")
+
+        # remaps our 1-hot to embedding space
+        embeddings = tf.Variable(
+            tf.random_uniform([vocab_size, embedding_dimension], -1.0, 1.0)
+        )
+        
+        embed = tf.nn.embedding_lookup(embeddings, self.X)
+        _X = tf.transpose(embed, [1, 0, 2])
+
+        self.Y = tf.placeholder(tf.int16, shape=[None, vocab_size], name="labels")
+
+        _X = tf.reshape(_X, [-1, embedding_dimension])
+        _X = tf.split(_X, time_steps, 0)
+
+        with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
+            self.rnn_cell   = tf.nn.rnn_cell.LSTMCell(hidden_layer_size)
+
+            self.outputs, _ = tf.contrib.rnn.static_rnn(self.rnn_cell, _X, dtype=tf.float32)
+            self.last_rnn_output = self.outputs[-1]
+
+            self.final_output, W_out, b_out = full_layer( self.last_rnn_output, vocab_size )
+
+            self.weights.append(W_out)
+            self.biases.append(b_out)
+
+            self.softmax = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.final_output,
+                    labels=self.Y)
+            self.cross_entropy_loss = tf.reduce_mean(self.softmax)
+
+            self.loss = self.cross_entropy_loss
+
+            self.optimizer = tf.train.AdamOptimizer()
+            self.train_step= self.optimizer.minimize(self.loss)
+
+            self.correct_prediction = tf.equal(tf.argmax(self.Y,1), tf.argmax(self.final_output, 1))
+            self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))*100
+
+
+class EmbeddedMultiLayerRNN(Trainable):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def build(self, num_layers, hidden_layer_size, vocab_size, embedding_dimension, time_steps, l2_reg=0.0):
+        self.time_steps = time_steps
+        self.vocab_size = vocab_size
+
+        self.Y = tf.placeholder(tf.int16, shape=[None, vocab_size], name="labels")
+        self.X = tf.placeholder(tf.int32, shape=[None, time_steps], name="data")
+
+	# remaps our 1-hot to embedding space
+        embeddings = tf.Variable(
+            tf.random_uniform([vocab_size, embedding_dimension], -1.0, 1.0)
+        )
+        
+        self.embed = tf.nn.embedding_lookup(embeddings, self.X)
+
+        with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
+
+            self.stacked_cells = lstm_layer(num_layers, hidden_layer_size)
+
+            self.outputs, self.states = tf.nn.dynamic_rnn(
+                    self.stacked_cells, self.embed, dtype=tf.float32)
+
             self.last_rnn_output = self.states[num_layers - 1][1]
 
             self.final_output, W_out, b_out = full_layer(self.last_rnn_output, vocab_size)
