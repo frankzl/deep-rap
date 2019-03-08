@@ -48,13 +48,17 @@ def sample( seed_text, trainable, encoder, decoder, length=40 ):
     #to print the seed characters
     seed_chars = seed_text
     print( "------Sampling----------" )
-    print( f"seed: \t{seed_text}" )
+    print( f"seed: \n{seed_text}\n-" )
         
     #predict next symbols
     for i in range(length):
         seed = encoder.encode_raw( seed_chars )
         # Take only the last required symbols
-        seed = seed[:,-1*trainable.time_steps:,:]
+        if len(seed.shape) == 3:
+            seed = seed[:,-1*trainable.time_steps:,:]
+        elif len(seed.shape) == 2:
+            seed = seed[:,-1*trainable.time_steps:]
+
             
         # remove_fist_char = seed[:,1:,:]
         # seed = np.append(remove_fist_char, np.reshape(probabilities, [1, 1, trainable.vocab_size]), axis=1)
@@ -64,7 +68,7 @@ def sample( seed_text, trainable, encoder, decoder, length=40 ):
         
         predicted_symbol = decoder.decode( predicted )
         seed_chars += predicted_symbol
-    print ('result:'+ seed_chars)
+    print ('result: \n'+ seed_chars)
 
 
 def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_size=128):
@@ -106,7 +110,11 @@ def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_s
             #get on of training set as seed
             # seed_text = train_data[0]
             # seed_text = train_data[0]
-            seed_text = "as real as it seems the american dream\nain't nothing but another calculated schemes\nto get us locked up"
+            seed_text = """as real as it seems the american dream
+ain't nothing but another calculated schemes\nto get us locked up shot up back in chains
+to deny us of the future rob our names\nkept my history of mystery but now i see
+the american dream wasn't meant for me\ncause lady liberty is a hypocrite she lied to me\npromised me freedom education equality
+never gave me nothing but slavery\nand now look at how dangerous you made me"""
             
             sampler(trainable, seed_text)
             
@@ -256,3 +264,56 @@ class OneHotWordDecoder(Decoder):
     def decode(self, predicted):
         predicted = sample_from_distribution(predicted, temperature=self.temperature)
         return " " + self.index2word[ np.argmax(predicted) ].replace("\\n","\n")
+
+class IndexWordEncoder(Encoder):
+    """
+    Encodes sequences of words to sequences of 1-Hot Encoded vectors
+    """
+    
+    def __init__(self, name, word2index):
+        super(IndexWordEncoder, self).__init__(name)
+        self.word2index = word2index
+        
+    def encode(self, sequences):
+        """
+        Encodes our sequences of words to sequences of indices
+        """
+        encoded_sequences = []
+        for seq in sequences:
+            
+            # encoded = np.zeros( len(seq) )
+            encoded = [ self.word2index[word] for word in seq ]
+            
+            encoded_sequences.append(encoded)
+        
+        return np.array(encoded_sequences)
+    
+    def encode_raw(self, text):
+        """
+        Encodes a text to sequences of indices (needed for sampling)
+        """
+        text = text.replace("\n", " \\n ")
+        text = text.replace(" +", " ")
+        words = text.split(" ")
+        encoded = np.zeros( len(words) )
+        
+        for idx, word in enumerate(words):
+            if word != "":
+                encoded[idx] = self.word2index[word]
+        
+        return np.array( [encoded] )
+        
+    
+    def encode_labels(self, labels):
+        """
+        Encodes the labels (sequences of one word)
+        """
+        
+        encoded = []
+        
+        for label in labels:
+            one_hot_vec = np.zeros(len(self.word2index), dtype=int)
+            one_hot_vec[ self.word2index[label] ] = 1
+            encoded.append( one_hot_vec )
+            
+        return np.array(encoded)
