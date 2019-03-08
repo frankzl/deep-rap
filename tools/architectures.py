@@ -472,6 +472,8 @@ class MultiLayerRNN_v2(Trainable):
         super().__init__(name)
 
     def build(self, num_layers, hidden_layer_size, vocab_size, time_steps, l2_reg=0.0, embedding_dim=None):
+        tf.reset_default_graph()
+        
         self.time_steps = time_steps
         self.vocab_size = vocab_size
 
