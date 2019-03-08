@@ -100,6 +100,7 @@ def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_s
             else:
                 print("Building model from scratch! \n Saving into: '{}'".format(LOG_DIR))
         else:
+            LOG_DIR = "../logs/train_model"
             print("Building model from scratch! \n Saving into: '{}'".format(LOG_DIR))
 
         tr_loss, tr_acc = session.run([trainable.loss, trainable.accuracy],
