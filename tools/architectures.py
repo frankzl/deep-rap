@@ -238,8 +238,8 @@ class SingleLayerRNN(Trainable):
 
 def lstm_layer(num_layers, hidden_layer_size):
     cells = []
-    for i in range(num_layers):
-        lstm_cell = tf.nn.rnn_cell.LSTMCell(hidden_layer_size)
+    for _ in range(num_layers):
+        lstm_cell = tf.nn.rnn_cell.LSTMCell(hidden_layer_size, reuse=tf.AUTO_REUSE)
         cells.append(lstm_cell)
 
     return tf.contrib.rnn.MultiRNNCell(cells=cells, state_is_tuple=True)
@@ -506,6 +506,73 @@ class MultiLayerRNN_v2(Trainable):
             self.last_rnn_output = self.states[num_layers - 1][1]
 
             self.final_output, W_out, b_out = full_layer(self.last_rnn_output, vocab_size)
+
+            self.weights.append(W_out)
+            self.biases.append(b_out)
+
+            self.softmax = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.final_output,
+                    labels=self.Y)
+            self.cross_entropy_loss = tf.reduce_mean(self.softmax)
+
+            self.loss = self.cross_entropy_loss
+
+            self.optimizer = tf.train.AdamOptimizer()
+            self.train_step = self.optimizer.minimize(self.loss)
+
+            self.correct_prediction = tf.equal(tf.argmax(self.Y,1), tf.argmax(self.final_output, 1))
+            self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))*100
+
+class MultiLayerRNN_more_embeddings(Trainable):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def build(self, num_layers, hidden_layer_size, vocab_size, time_steps, embedding_words,
+              num_layers_phonem, hidden_layer_size_phonem, vocab_size_phonem, time_steps_phonem, 
+              embedding_phonems, l2_reg=0.0):
+        tf.reset_default_graph()
+        
+        self.time_steps = time_steps
+        self.vocab_size = vocab_size
+
+        self.X = tf.placeholder(tf.int32, shape=[None, time_steps], name="data")
+        self.Y = tf.placeholder(tf.int16, shape=[None, vocab_size], name="labels")
+        self.X_phonem = tf.placeholder(tf.int32, shape=[None, time_steps_phonem], name="phonem_data")
+        self.phonem_seqlens = tf.placeholder(tf.int32, shape=[None])
+
+        # define pretrained words embedding
+        with tf.name_scope("embeddings"):
+            self.embedding_placeholder = tf.placeholder(tf.float32, [vocab_size, embedding_words])
+            embeddings = tf.Variable(tf.constant(0.0, shape=[vocab_size, embedding_words]), trainable=True)
+            self.embedding_init = embeddings.assign(self.embedding_placeholder)
+            embed = tf.nn.embedding_lookup(embeddings, self.X)
+
+        # define pretrained phonem
+        with tf.name_scope("embeddings_phonem"):
+            self.embedding_phonem_placeholder = tf.placeholder(tf.float32, [vocab_size_phonem, embedding_phonems])
+            embeddings_phonem = tf.Variable(tf.constant(0.0, shape=[vocab_size_phonem, embedding_phonems]), trainable=True)
+            self.embedding_phonem_init = embeddings_phonem.assign(self.embedding_phonem_placeholder)
+            embed_phonem = tf.nn.embedding_lookup(embeddings_phonem, self.X_phonem)
+
+        with tf.variable_scope(self.name, reuse=tf.AUTO_REUSE):
+
+            # words
+            with tf.name_scope("lstm"):
+                self.stacked_cells = lstm_layer(num_layers, hidden_layer_size)
+                self.outputs, self.states = tf.nn.dynamic_rnn(
+                        self.stacked_cells, embed, dtype=tf.float32)
+                self.last_rnn_output = self.states[num_layers - 1][1]
+
+            # phonems
+            with tf.name_scope("lstm_phonem"):
+                self.stacked_cells_phonem = lstm_layer(num_layers_phonem, hidden_layer_size_phonem)
+                self.outputs_phonem, self.states_phonem = tf.nn.dynamic_rnn(
+                        self.stacked_cells_phonem, embed_phonem, sequence_length=None, dtype=tf.float32)
+                self.last_rnn_output_phonem = self.states_phonem[num_layers_phonem - 1][1]
+
+            # concat both final states
+            self.lstm_states = tf.concat([self.last_rnn_output, self.last_rnn_output_phonem])
+
+            self.final_output, W_out, b_out = full_layer(self.lstm_states, vocab_size)
 
             self.weights.append(W_out)
             self.biases.append(b_out)

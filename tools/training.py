@@ -87,7 +87,7 @@ def train_model(trainable, train_data, train_labels, sampler, epochs=20, batch_s
     with session.as_default():
         session.run(tf.global_variables_initializer())
         # assign pretrained embedding matrix
-        if embedding_matrix:
+        if embedding_matrix is not None:
             session.run(trainable.embedding_init, feed_dict={trainable.embedding_placeholder: embedding_matrix})
 
         if log_dir:
@@ -360,3 +360,93 @@ class IndexWordEncoder(Encoder):
             encoded.append( one_hot_vec )
             
         return np.array(encoded)
+
+def train_model_more_embeddings(trainable, train_data, train_data_2, train_labels, sampler, epochs=20, 
+                                batch_size=128, log_dir=None, 
+                                embedding_matrix=None, 
+                                embedding_matrix_phonem=None, retrain=False):
+    train_losses = []
+    train_accs = []
+    
+    trainable.session = tf.Session()
+    session = trainable.session
+    
+    saver = tf.train.Saver(max_to_keep=4, keep_checkpoint_every_n_hours=0.5)
+
+    TRAIN = True
+    with session.as_default():
+        session.run(tf.global_variables_initializer())
+        # assign pretrained embedding matrix
+        if embedding_matrix is not None:
+            session.run(trainable.embedding_init, feed_dict={trainable.embedding_placeholder: embedding_matrix})
+        if embedding_matrix_phonem is not None:
+            session.run(trainable.embedding_phonem_init, feed_dict={trainable.embedding_phonem_placeholder: embedding_matrix_phonem})
+
+        if log_dir:
+            LOG_DIR = log_dir
+            if not os.path.exists(LOG_DIR):
+                os.makedirs(LOG_DIR, exist_ok=True)
+            if glob.glob(LOG_DIR + "/*.meta"):
+                TRAIN = retrain
+                saver = tf.train.import_meta_graph(glob.glob(LOG_DIR + '/*.meta')[0])
+                saver.restore(session, os.path.join(LOG_DIR, "model"))
+                print("Restoring an old model from '{}'".format(LOG_DIR))
+                if retrain:
+                    print("and training it further..")
+            else:
+                print("Building model from scratch! \n Saving into: '{}'".format(LOG_DIR))
+        else:
+            LOG_DIR = "logs/train_model"
+            if not os.path.exists(LOG_DIR):
+                os.makedirs(LOG_DIR, exist_ok=True)
+            print("Building model from scratch! \n Saving into: '{}'".format(LOG_DIR))
+
+        tr_loss, tr_acc = session.run([trainable.loss, trainable.accuracy],
+                                      feed_dict={trainable.X: train_data,
+                                                 trainable.Y: train_labels,
+                                                 trainable.X_phonem: train_data_2})
+        train_losses.append(tr_loss)
+        train_accs.append(tr_acc)
+        
+        if TRAIN:
+            for epoch in range(epochs):
+                
+                for batch_ixs in batch_data(len(train_data), batch_size):
+                    _ = session.run(trainable.train_step,
+                                feed_dict={
+                                    trainable.X: train_data[batch_ixs],
+                                    trainable.Y: train_labels[batch_ixs],
+                                    trainable.X_phonem: train_data_2[batch_ixs]
+                                })
+                tr_loss, tr_acc = session.run([trainable.loss, trainable.accuracy],
+                                            feed_dict={trainable.X: train_data,
+                                                        trainable.Y: train_labels,
+                                                        trainable.X_phonem: train_data_2
+                                                        })
+                train_losses.append(tr_loss)
+                train_accs.append(tr_acc)
+                
+                if(epoch + 1) % 1 == 0:
+                    # saving the session into "model"
+                    saver.save(session, os.path.join(LOG_DIR, "model"))
+                    print(f"\n\nEpoch {epoch + 1}/{epochs}")
+                    print(f"Loss:    \t {tr_loss}")
+                    print(f"Accuracy:\t {tr_acc}")
+                
+                
+                #get on of training set as seed
+                # seed_text = train_data[0]
+                # seed_text = train_data[0]
+                seed_text = """as real as it seems the american dream
+    ain't nothing but another calculated schemes\nto get us locked up shot up back in chains
+    to deny us of the future rob our names\nkept my history of mystery but now i see
+    the american dream wasn't meant for me\ncause lady liberty is a hypocrite she lied to me\npromised me freedom education equality
+    never gave me nothing but slavery\nand now look at how dangerous you made me"""
+                
+                sampler(trainable, seed_text)
+            
+    
+    trainable.hist = {
+        'train_losses': np.array(train_losses),
+        'train_accuracy': np.array(train_accs)
+    }
