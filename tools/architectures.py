@@ -477,7 +477,7 @@ class MultiLayerRNN_v2(Trainable):
 
         self.X = tf.placeholder(tf.int32, shape=[None, time_steps], name="data")
         self.Y = tf.placeholder(tf.int16, shape=[None, vocab_size], name="labels")
-        self._seqlens = _seqlens = tf.placeholder(tf.int32, shape=[None])
+        self._seqlens = tf.placeholder(tf.int32, shape=[None])
 
         if(embedding_dim is None):
             embedding_dimension = 64
